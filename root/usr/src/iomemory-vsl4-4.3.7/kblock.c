@@ -1829,14 +1829,10 @@ KFIO_SUBMIT_BIO
     {
         kassert_once(!"timed out waiting for queue to unstall.");
         __kfio_bio_complete(bio, 0, -EIO);
-	KFIO_SUBMIT_BIO_RC
+        KFIO_SUBMIT_BIO_RC
     }
 
-    // Split the incomming bio if it has more segments than we have scatter-gather DMA vectors,
-    //   and re-submit the remainder to the request queue. blk_queue_split() does all that for us.
-    // It appears the kernel quit honoring the blk_queue_max_segments() in about 4.13.
-    if (bio_segments(bio) >= queue_max_segments(queue))
-      BLK_QUEUE_SPLIT;
+    KFIO_BIO_SPLIT_TO_LIMITS_OR_RETURN;
 
     /*
      * The atomic chains have more overhead (using atomic contexts etc) so
@@ -1846,7 +1842,7 @@ KFIO_SUBMIT_BIO
     if (bio->bi_next && __kfio_bio_atomic(bio) && bio_data_dir(bio) == WRITE)
     {
         kfio_submit_atomic_chain(queue, bio);
-	KFIO_SUBMIT_BIO_RC
+        KFIO_SUBMIT_BIO_RC
     }
 
     plug_data = kfio_should_plug(queue);
